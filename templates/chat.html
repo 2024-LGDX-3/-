@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Claude & FastAPI Chat</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<style>
+    /* 로딩 애니메이션 스타일 */
+    #loading {
+        display: none;
+        width: 30px;
+        height: 30px;
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: #3498db;
+        animation: spin 1s ease-in-out infinite;
+        margin: 10px auto;
+    }
+
+    #not-loading {
+        width: 30px;
+        height: 30px;
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-color: #3498db;
+        margin: 10px auto;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+<body>
+    <h1>사이버 박성일 v1</h1>
+    <span>박성일의 로컬 환경이라 속도가 느릴 수 있어요~</span>
+    <div id="chat-container">
+        {% for message in chat_history %}
+            <div class="message {% if message.role == 'user' %}user{% else %}assistant{% endif %}">
+                <strong>{% if message.role == 'user' %}User{% else %}박성일{% endif %}:</strong> {{ message.content }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- 로딩 애니메이션 -->
+    <div id="loading"></div>
+    <div id="not-loading"></div>
+
+    <form id="chat-form">
+        <input type="text" id="chat-input" name="chat_input" placeholder="메시지를 입력하세요" required>
+        <button type="submit">전송</button>
+    </form>
+    <form id="clear-form">
+        <button type="submit">대화 초기화</button>
+    </form>
+
+    <script>
+        $(document).ready(function() {
+            function scrollToBottom() {
+                $("#chat-container").scrollTop($("#chat-container")[0].scrollHeight);
+            }
+
+            $("#chat-form").on("submit", function(e) {
+                e.preventDefault();
+                
+                // 로딩 애니메이션 표시
+                $("#loading").show();
+                $("#not-loading").hide();
+
+                $.ajax({
+                    url: "/chat_post",
+                    type: "POST",
+                    data: $(this).serialize(),
+                    success: function(response) {
+                        // 로딩 애니메이션 숨기기
+                        $("#loading").hide();
+                        $("#not-loading").show();
+
+                        // chat_history를 업데이트
+                        $("#chat-container").empty();
+                        response.chat_history.forEach(function(message) {
+                            const role = message.role === 'user' ? 'user' : 'assistant';
+                            const name = role === 'user' ? 'User' : '박성일';
+                            $("#chat-container").append(
+                                `<div class="message ${role}">
+                                    <strong>${name}:</strong> ${message.content}
+                                </div>`
+                            );
+                        });
+
+                        // 입력 필드를 비움
+                        $("#chat-input").val("");
+
+                        // 스크롤을 맨 아래로 이동
+                        scrollToBottom();
+                    },
+                    error: function() {
+                        // 로딩 애니메이션 숨기기 (오류 발생 시에도)
+                        $("#loading").hide();
+                        $("#not-loading").show();
+                    }
+                });
+            });
+
+            $("#clear-form").on("submit", function(e) {
+                e.preventDefault();
+                
+                // 로딩 애니메이션 표시
+                $("#loading").show();
+                $("#not-loading").hide();
+
+                $.ajax({
+                    url: "/clear_chat",
+                    type: "POST",
+                    success: function(response) {
+                        // 로딩 애니메이션 숨기기
+                        $("#loading").hide();
+                        $("#not-loading").show();
+
+                        // 채팅 내용을 비움
+                        $("#chat-container").empty();
+
+                        // 스크롤을 맨 아래로 이동
+                        scrollToBottom();
+                    },
+                    error: function() {
+                        // 로딩 애니메이션 숨기기 (오류 발생 시에도)
+                        $("#not-loading").show();
+                        $("#loading").hide();
+                    }
+                });
+            });
+
+            // 페이지 로드 시 스크롤을 맨 아래로 이동
+            scrollToBottom();
+        });
+    </script>
+</body>
+</html>
